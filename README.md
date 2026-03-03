@@ -2,6 +2,26 @@
 
 A.V.I.D. can be used as either a GUI or CLI. It builds a single composite frame from an image, then encodes a video using FFmpeg for the full duration of the audio.
 
+## Context
+
+This tool was built to support my students' media workflow. I am an instructor first, and I write code when it solves a practical problem in my classes or media environment.
+
+The project is shared publicly under the GNU General Public License v3.0 (GPLv3) for transparency and educational use. It works for my systems and use case.
+
+The software is provided as-is, without warranty or guaranteed support. I maintain it as needed for my own environment. Bug reports and pull requests are welcome, but response times may vary during the academic term.
+
+## License
+
+A.V.I.D. is licensed under the GNU General Public License v3.0 (GPLv3).
+
+Why GPLv3 for this project:
+
+- Forces derivatives to remain open.
+- Prevents incorporation into proprietary systems.
+- Requires source distribution if redistributed.
+- Is widely respected in academic and technical communities.
+- Sends a clear message: reciprocity matters.
+
 ## What it does
 
 - Loads one image.
