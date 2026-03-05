@@ -84,6 +84,22 @@ def ffprobe_binary_name() -> str:
     return "ffprobe.exe" if current_platform() == "Windows" else "ffprobe"
 
 
+def macos_ffmpeg_candidates() -> list[tuple[Path, str]]:
+    return [
+        (app_base_dir() / "ffmpeg", "bundled"),
+        (Path("/usr/local/bin/ffmpeg"), "system"),
+        (Path("/Applications/ffmpeg"), "system"),
+    ]
+
+
+def macos_ffprobe_candidates() -> list[tuple[Path, str]]:
+    return [
+        (app_base_dir() / "ffprobe", "bundled"),
+        (Path("/usr/local/bin/ffprobe"), "system"),
+        (Path("/Applications/ffprobe"), "system"),
+    ]
+
+
 def app_base_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
@@ -127,6 +143,11 @@ def bundled_ffprobe_path() -> Path | None:
 
 
 def find_ffmpeg() -> tuple[str | None, str | None]:
+    if current_platform() == "Darwin":
+        for candidate, source in macos_ffmpeg_candidates():
+            if candidate.exists() and candidate.is_file():
+                return str(candidate), source
+
     bundled = bundled_ffmpeg_path()
     if bundled is not None:
         return str(bundled), "bundled"
@@ -139,6 +160,11 @@ def find_ffmpeg() -> tuple[str | None, str | None]:
 
 
 def find_ffprobe() -> tuple[str | None, str | None]:
+    if current_platform() == "Darwin":
+        for candidate, source in macos_ffprobe_candidates():
+            if candidate.exists() and candidate.is_file():
+                return str(candidate), source
+
     bundled = bundled_ffprobe_path()
     if bundled is not None:
         return str(bundled), "bundled"
