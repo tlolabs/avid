@@ -31,7 +31,7 @@ Why GPLv3 for this project:
 - Uses FFmpeg to loop that composite frame for the full audio duration.
 - Compresses audio with AAC.
 - GUI presets for social media outlet, supported resolution, and matching aspect ratio.
-- On macOS, checks FFmpeg in this order: app bundle path (`/AVID.app/Contents/MacOS/ffmpeg`), system install (`/usr/local/bin/ffmpeg`), application path (`/Applications/ffmpeg`), then `ffmpeg` on PATH.
+- Checks bundled FFmpeg/ffprobe locations inside packaged apps before falling back to system installs.
 - On launch, the GUI guides the user to current FFmpeg download pages if FFmpeg is missing.
 
 ## Setup
@@ -45,19 +45,24 @@ python3 -m pip install -r requirements.txt
 
 ### Bundled FFmpeg
 
-A.V.I.D. looks for a bundled FFmpeg binary in this order:
+A.V.I.D. looks for bundled FFmpeg and ffprobe binaries in common source and PyInstaller app-bundle locations, including:
 
 - `ffmpeg/<platform>/<arch>/ffmpeg`
 - `ffmpeg/<platform>/ffmpeg`
 - `ffmpeg/ffmpeg`
+- direct app resource paths such as `AVID.app/Contents/Resources/ffmpeg`
+- direct app executable paths such as `AVID.app/Contents/MacOS/ffmpeg`
 
-On Windows, the binary name must be `ffmpeg.exe`.
+On Windows, the binary names must be `ffmpeg.exe` and `ffprobe.exe`.
 
 Example bundle paths:
 
 - `ffmpeg/darwin/arm64/ffmpeg`
+- `ffmpeg/darwin/arm64/ffprobe`
 - `ffmpeg/windows/x86_64/ffmpeg.exe`
+- `ffmpeg/windows/x86_64/ffprobe.exe`
 - `ffmpeg/linux/x86_64/ffmpeg`
+- `ffmpeg/linux/x86_64/ffprobe`
 
 To validate a release build before packaging:
 

@@ -29,8 +29,8 @@ def normalized_arch(machine: str) -> str:
     return aliases.get(machine.lower(), machine.lower())
 
 
-def ffmpeg_name(target_platform: str) -> str:
-    return "ffmpeg.exe" if target_platform == "windows" else "ffmpeg"
+def media_tool_name(target_platform: str, tool_name: str) -> str:
+    return f"{tool_name}.exe" if target_platform == "windows" else tool_name
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,22 +65,37 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    binary_name = ffmpeg_name(args.target_platform)
-    expected_path = args.root / "ffmpeg" / args.target_platform / args.target_arch / binary_name
+    expected_ffmpeg_path = (
+        args.root
+        / "ffmpeg"
+        / args.target_platform
+        / args.target_arch
+        / media_tool_name(args.target_platform, "ffmpeg")
+    )
+    expected_ffprobe_path = (
+        args.root
+        / "ffmpeg"
+        / args.target_platform
+        / args.target_arch
+        / media_tool_name(args.target_platform, "ffprobe")
+    )
 
     print(f"Target platform: {args.target_platform}")
     print(f"Target architecture: {args.target_arch}")
-    print(f"Expected bundled FFmpeg path: {expected_path}")
+    print(f"Expected bundled FFmpeg path: {expected_ffmpeg_path}")
+    print(f"Expected bundled ffprobe path: {expected_ffprobe_path}")
 
-    if expected_path.exists():
-        print("Bundled FFmpeg check: OK")
+    missing_paths = [path for path in (expected_ffmpeg_path, expected_ffprobe_path) if not path.exists()]
+    if not missing_paths:
+        print("Bundled FFmpeg/ffprobe check: OK")
         return 0
 
     if args.require_bundled_ffmpeg:
-        print("Bundled FFmpeg check: MISSING", file=sys.stderr)
+        for path in missing_paths:
+            print(f"Missing bundled media binary: {path}", file=sys.stderr)
         return 1
 
-    print("Bundled FFmpeg check: not present, but not required")
+    print("Bundled FFmpeg/ffprobe check: not complete, but not required")
     return 0
 
 

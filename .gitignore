@@ -6,3 +6,4 @@ build/
 dist/
 *.spec
 .pyinstaller/
+packages/dmg-root/

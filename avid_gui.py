@@ -21,7 +21,15 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from PIL import Image, ImageTk
 
-from avid import RenderCancelledError, build_composite, create_video, ffmpeg_setup_details, find_ffmpeg, parse_size
+from avid import (
+    RenderCancelledError,
+    build_composite,
+    create_video,
+    ffmpeg_setup_details,
+    find_ffmpeg,
+    find_ffprobe,
+    parse_size,
+)
 
 
 PLATFORM_FORMATS = {
@@ -474,6 +482,22 @@ class AvidGUI:
         stop_event: threading.Event,
     ) -> None:
         try:
+            self._enqueue_command_output("Checking FFmpeg availability...")
+            ffmpeg_path, ffmpeg_source = find_ffmpeg()
+            if ffmpeg_path is None:
+                details = ffmpeg_setup_details()
+                self._enqueue_command_output("FFmpeg not found. Render cannot start.")
+                self._enqueue_command_output(f"Expected bundled path: {details['bundle_target']}")
+                self._enqueue_command_output("Install FFmpeg or rebuild A.V.I.D. with bundled ffmpeg and ffprobe binaries.")
+            else:
+                self._enqueue_command_output(f"FFmpeg ready ({ffmpeg_source}): {ffmpeg_path}")
+
+            ffprobe_path, ffprobe_source = find_ffprobe()
+            if ffprobe_path is None:
+                self._enqueue_command_output("ffprobe not found. ETA may be unavailable, but rendering can continue.")
+            else:
+                self._enqueue_command_output(f"ffprobe ready ({ffprobe_source}): {ffprobe_path}")
+
             create_video(
                 image_path=image_path,
                 audio_path=audio_path,
@@ -487,9 +511,11 @@ class AvidGUI:
             )
             self.root.after(0, lambda: self._render_done(f"Done: {output_path}", success=True))
         except RenderCancelledError as exc:
-            self.root.after(0, lambda: self._render_done(str(exc), success=False, cancelled=True))
+            msg = str(exc)
+            self.root.after(0, lambda m=msg: self._render_done(m, success=False, cancelled=True))
         except Exception as exc:  # noqa: BLE001
-            self.root.after(0, lambda: self._render_done(f"Error: {exc}", success=False))
+            msg = f"Error: {exc}"
+            self.root.after(0, lambda m=msg: self._render_done(m, success=False))
 
     def _render_done(self, status: str, success: bool, cancelled: bool = False) -> None:
         self.render_in_progress = False

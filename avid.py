@@ -24,7 +24,7 @@ import threading
 import time
 from pathlib import Path
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
 
 FFMPEG_DOWNLOAD_PAGES = {
@@ -106,26 +106,55 @@ def app_base_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
+def resource_base_dirs() -> list[Path]:
+    base_dir = app_base_dir()
+    candidates = [
+        base_dir,
+        base_dir.parent / "Resources",
+        base_dir.parent / "Frameworks",
+        Path(getattr(sys, "_MEIPASS", base_dir)),
+        Path(__file__).resolve().parent,
+    ]
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique_candidates.append(resolved)
+    return unique_candidates
+
+
 def bundled_ffmpeg_candidates() -> list[Path]:
     binary_name = ffmpeg_binary_name()
     arch = current_architecture()
-    base_dir = app_base_dir()
-    return [
-        base_dir / "ffmpeg" / current_platform().lower() / arch / binary_name,
-        base_dir / "ffmpeg" / current_platform().lower() / binary_name,
-        base_dir / "ffmpeg" / binary_name,
-    ]
+    candidates = []
+    for base_dir in resource_base_dirs():
+        candidates.extend(
+            [
+                base_dir / "ffmpeg" / current_platform().lower() / arch / binary_name,
+                base_dir / "ffmpeg" / current_platform().lower() / binary_name,
+                base_dir / "ffmpeg" / binary_name,
+                base_dir / binary_name,
+            ]
+        )
+    return candidates
 
 
 def bundled_ffprobe_candidates() -> list[Path]:
     binary_name = ffprobe_binary_name()
     arch = current_architecture()
-    base_dir = app_base_dir()
-    return [
-        base_dir / "ffmpeg" / current_platform().lower() / arch / binary_name,
-        base_dir / "ffmpeg" / current_platform().lower() / binary_name,
-        base_dir / "ffmpeg" / binary_name,
-    ]
+    candidates = []
+    for base_dir in resource_base_dirs():
+        candidates.extend(
+            [
+                base_dir / "ffmpeg" / current_platform().lower() / arch / binary_name,
+                base_dir / "ffmpeg" / current_platform().lower() / binary_name,
+                base_dir / "ffmpeg" / binary_name,
+                base_dir / binary_name,
+            ]
+        )
+    return candidates
 
 
 def bundled_ffmpeg_path() -> Path | None:
@@ -246,33 +275,32 @@ def build_composite(
     flip_vertical: bool,
 ) -> Image.Image:
     out_w, out_h = output_size
-    base = Image.open(image_path).convert("RGB")
+    base = Image.open(image_path)
+    base = ImageOps.exif_transpose(base).convert("RGB")
 
     if flip_horizontal:
         base = base.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if flip_vertical:
         base = base.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
-    background = base.copy()
-    bg_scale = max(out_w / background.width, out_h / background.height)
+    bg_scale = max(out_w / base.width, out_h / base.height)
     bg_size = (
-        max(1, int(round(background.width * bg_scale))),
-        max(1, int(round(background.height * bg_scale))),
+        max(1, int(round(base.width * bg_scale))),
+        max(1, int(round(base.height * bg_scale))),
     )
-    background = background.resize(bg_size, Image.Resampling.LANCZOS)
+    background = base.resize(bg_size, Image.Resampling.LANCZOS)
     bg_x = (bg_size[0] - out_w) // 2
     bg_y = (bg_size[1] - out_h) // 2
     background = background.crop((bg_x, bg_y, bg_x + out_w, bg_y + out_h))
     background = background.filter(ImageFilter.GaussianBlur(radius=40))
 
-    foreground = base.copy()
     square_side = min(out_w, out_h)
-    fg_scale = min(square_side / foreground.width, square_side / foreground.height)
+    fg_scale = min(square_side / base.width, square_side / base.height)
     fg_size = (
-        max(1, int(round(foreground.width * fg_scale))),
-        max(1, int(round(foreground.height * fg_scale))),
+        max(1, int(round(base.width * fg_scale))),
+        max(1, int(round(base.height * fg_scale))),
     )
-    foreground = foreground.resize(fg_size, Image.Resampling.LANCZOS)
+    foreground = base.resize(fg_size, Image.Resampling.LANCZOS)
     fg_x = (out_w - fg_size[0]) // 2
     fg_y = (out_h - fg_size[1]) // 2
 
