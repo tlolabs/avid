@@ -16,7 +16,6 @@
 import argparse
 import platform
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -82,22 +81,6 @@ def ffmpeg_binary_name() -> str:
 
 def ffprobe_binary_name() -> str:
     return "ffprobe.exe" if current_platform() == "Windows" else "ffprobe"
-
-
-def macos_ffmpeg_candidates() -> list[tuple[Path, str]]:
-    return [
-        (app_base_dir() / "ffmpeg", "bundled"),
-        (Path("/usr/local/bin/ffmpeg"), "system"),
-        (Path("/Applications/ffmpeg"), "system"),
-    ]
-
-
-def macos_ffprobe_candidates() -> list[tuple[Path, str]]:
-    return [
-        (app_base_dir() / "ffprobe", "bundled"),
-        (Path("/usr/local/bin/ffprobe"), "system"),
-        (Path("/Applications/ffprobe"), "system"),
-    ]
 
 
 def app_base_dir() -> Path:
@@ -172,35 +155,17 @@ def bundled_ffprobe_path() -> Path | None:
 
 
 def find_ffmpeg() -> tuple[str | None, str | None]:
-    if current_platform() == "Darwin":
-        for candidate, source in macos_ffmpeg_candidates():
-            if candidate.exists() and candidate.is_file():
-                return str(candidate), source
-
     bundled = bundled_ffmpeg_path()
     if bundled is not None:
         return str(bundled), "bundled"
-
-    system_ffmpeg = shutil.which("ffmpeg")
-    if system_ffmpeg is not None:
-        return system_ffmpeg, "system"
 
     return None, None
 
 
 def find_ffprobe() -> tuple[str | None, str | None]:
-    if current_platform() == "Darwin":
-        for candidate, source in macos_ffprobe_candidates():
-            if candidate.exists() and candidate.is_file():
-                return str(candidate), source
-
     bundled = bundled_ffprobe_path()
     if bundled is not None:
         return str(bundled), "bundled"
-
-    system_ffprobe = shutil.which("ffprobe")
-    if system_ffprobe is not None:
-        return system_ffprobe, "system"
 
     return None, None
 
@@ -215,7 +180,7 @@ def ensure_ffmpeg() -> str:
             "FFmpeg is not available.\n"
             f"Platform: {platform_name} ({arch})\n"
             f"Expected bundled binary: {bundle_target}\n"
-            "Install FFmpeg system-wide or place the platform-specific binary in the bundled path."
+            "Rebuild A.V.I.D. with a bundled platform-specific FFmpeg binary."
         )
     return ffmpeg_path
 

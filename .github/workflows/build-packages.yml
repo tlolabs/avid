@@ -1,0 +1,103 @@
+name: Build Packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+          - arch: x86_64
+            runner: macos-15-intel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install -r requirements.txt pyinstaller
+          brew install ffmpeg
+
+      - name: Build macOS package
+        run: ./build_macos_app.sh "${{ matrix.arch }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AVID-macos-${{ matrix.arch }}
+          path: packages/AVID-macos-${{ matrix.arch }}.dmg
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+          choco install ffmpeg -y
+
+      - name: Build Windows package
+        shell: powershell
+        run: |
+          $ffmpeg = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe"
+          $ffprobe = "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffprobe.exe"
+          pyinstaller --noconfirm --windowed --name AVID --add-data "LICENSE;." --add-binary "${ffmpeg};." --add-binary "${ffprobe};." avid_gui.py
+          Compress-Archive -Path dist\AVID -DestinationPath packages\AVID-windows-x64.zip -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AVID-windows-x64
+          path: packages/AVID-windows-x64.zip
+
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-tk
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build Linux package
+        run: |
+          mkdir -p packages
+          pyinstaller --noconfirm --name AVID --add-data "LICENSE:." --add-binary "/usr/bin/ffmpeg:." --add-binary "/usr/bin/ffprobe:." avid_gui.py
+          tar -C dist -czf packages/AVID-linux-x64.tar.gz AVID
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AVID-linux-x64
+          path: packages/AVID-linux-x64.tar.gz

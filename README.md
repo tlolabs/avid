@@ -31,12 +31,12 @@ Why GPLv3 for this project:
 - Uses FFmpeg to loop that composite frame for the full audio duration.
 - Compresses audio with AAC.
 - GUI presets for social media outlet, supported resolution, and matching aspect ratio.
-- Checks bundled FFmpeg/ffprobe locations inside packaged apps before falling back to system installs.
+- Uses bundled FFmpeg/ffprobe locations inside packaged apps; system FFmpeg is intentionally not used.
 - On launch, the GUI guides the user to current FFmpeg download pages if FFmpeg is missing.
 
 ## Setup
 
-1. Install FFmpeg. On macOS, A.V.I.D. checks `/AVID.app/Contents/MacOS/ffmpeg`, then `/usr/local/bin/ffmpeg`, then `/Applications/ffmpeg`, then falls back to `ffmpeg` on PATH.
+1. For source-based development, install FFmpeg or provide bundled FFmpeg/ffprobe binaries in the expected project paths. Packaged app releases include the required media binaries.
 2. Install Python dependencies:
 
 ```bash
@@ -75,6 +75,17 @@ To validate for a different target:
 ```bash
 python3 check_ffmpeg_bundle.py --platform windows --arch x86_64 --require-bundled-ffmpeg
 ```
+
+### Release builds
+
+Local macOS builds can be created with:
+
+```bash
+./build_macos_app.sh arm64
+./build_macos_app.sh x86_64
+```
+
+The Intel macOS build requires an x86_64 Python/PyInstaller environment. The GitHub Actions workflow in `.github/workflows/build-packages.yml` builds native packages for macOS ARM64, macOS Intel, Windows x64, and Linux x64 on the appropriate runner platforms.
 
 ## Usage
 

@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv-x86_64/
 build/
 dist/
 *.spec
