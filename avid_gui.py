@@ -28,6 +28,7 @@ from avid import (
     ffmpeg_setup_details,
     find_ffmpeg,
     find_ffprobe,
+    get_media_duration,
     parse_size,
 )
 
@@ -91,6 +92,7 @@ class AvidGUI:
 
         self.image_var = tk.StringVar()
         self.audio_var = tk.StringVar()
+        self.audio_duration_var = tk.StringVar(value="No audio selected")
         self.output_var = tk.StringVar()
         self.platform_var = tk.StringVar()
         self.aspect_ratio_var = tk.StringVar()
@@ -105,6 +107,7 @@ class AvidGUI:
         self.render_stop_event: threading.Event | None = None
         self.render_in_progress = False
         self.command_tray_open = False
+        self.audio_duration_seconds: float | None = None
         self.progress_var = tk.DoubleVar(value=0.0)
         self.progress_text_var = tk.StringVar(value="Idle")
 
@@ -123,9 +126,11 @@ class AvidGUI:
 
         self._build_row(controls, 1, "Image", self.image_var, self.pick_image)
         self._build_row(controls, 2, "Audio", self.audio_var, self.pick_audio)
-        self._build_row(controls, 3, "Output (.mp4)", self.output_var, self.pick_output)
+        ttk.Label(controls, text="Audio duration").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Label(controls, textvariable=self.audio_duration_var).grid(row=3, column=1, columnspan=2, sticky="w", pady=4)
+        self._build_row(controls, 4, "Output (.mp4)", self.output_var, self.pick_output)
 
-        ttk.Label(controls, text="Social media outlet").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Label(controls, text="Social media outlet").grid(row=5, column=0, sticky="w", pady=4)
         self.platform_combo = ttk.Combobox(
             controls,
             textvariable=self.platform_var,
@@ -133,34 +138,34 @@ class AvidGUI:
             state="readonly",
             width=28,
         )
-        self.platform_combo.grid(row=4, column=1, sticky="w", pady=4)
+        self.platform_combo.grid(row=5, column=1, sticky="w", pady=4)
         self.platform_combo.bind("<<ComboboxSelected>>", self._on_platform_change)
 
-        ttk.Label(controls, text="Aspect ratio").grid(row=5, column=0, sticky="w", pady=4)
+        ttk.Label(controls, text="Aspect ratio").grid(row=6, column=0, sticky="w", pady=4)
         self.aspect_ratio_combo = ttk.Combobox(
             controls,
             textvariable=self.aspect_ratio_var,
             state="readonly",
             width=28,
         )
-        self.aspect_ratio_combo.grid(row=5, column=1, sticky="w", pady=4)
+        self.aspect_ratio_combo.grid(row=6, column=1, sticky="w", pady=4)
         self.aspect_ratio_combo.bind("<<ComboboxSelected>>", self._on_aspect_ratio_change)
 
-        ttk.Label(controls, text="Resolution").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Label(controls, text="Resolution").grid(row=7, column=0, sticky="w", pady=4)
         self.resolution_combo = ttk.Combobox(
             controls,
             textvariable=self.resolution_var,
             state="readonly",
             width=28,
         )
-        self.resolution_combo.grid(row=6, column=1, sticky="w", pady=4)
+        self.resolution_combo.grid(row=7, column=1, sticky="w", pady=4)
         self.resolution_combo.bind("<<ComboboxSelected>>", self._on_resolution_change)
 
-        ttk.Label(controls, text="Audio bitrate").grid(row=7, column=0, sticky="w", pady=4)
-        ttk.Entry(controls, textvariable=self.audio_bitrate_var, width=20).grid(row=7, column=1, sticky="w", pady=4)
+        ttk.Label(controls, text="Audio bitrate").grid(row=8, column=0, sticky="w", pady=4)
+        ttk.Entry(controls, textvariable=self.audio_bitrate_var, width=20).grid(row=8, column=1, sticky="w", pady=4)
 
-        ttk.Label(controls, text="FPS").grid(row=8, column=0, sticky="w", pady=4)
-        ttk.Entry(controls, textvariable=self.fps_var, width=20).grid(row=8, column=1, sticky="w", pady=4)
+        ttk.Label(controls, text="FPS").grid(row=9, column=0, sticky="w", pady=4)
+        ttk.Entry(controls, textvariable=self.fps_var, width=20).grid(row=9, column=1, sticky="w", pady=4)
 
         self.progress_bar = ttk.Progressbar(
             controls,
@@ -169,11 +174,11 @@ class AvidGUI:
             variable=self.progress_var,
             length=360,
         )
-        self.progress_bar.grid(row=9, column=0, columnspan=3, sticky="ew", pady=(12, 6))
-        ttk.Label(controls, textvariable=self.progress_text_var).grid(row=10, column=0, columnspan=3, sticky="w")
+        self.progress_bar.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(12, 6))
+        ttk.Label(controls, textvariable=self.progress_text_var).grid(row=11, column=0, columnspan=3, sticky="w")
 
         self.render_button = ttk.Button(controls, text="Create Video", command=self.on_render)
-        self.render_button.grid(row=11, column=0, columnspan=2, sticky="ew", pady=(6, 6))
+        self.render_button.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(6, 6))
 
         self.preview_label = ttk.Label(preview_panel, text="Choose an image to see the styled preview.", anchor="center")
         self.preview_label.grid(row=0, column=0)
@@ -184,7 +189,7 @@ class AvidGUI:
         )
 
         self.command_toggle_button = ttk.Button(controls, text="Show FFmpeg Console", command=self.toggle_command_tray)
-        self.command_toggle_button.grid(row=11, column=2, sticky="ew", padx=(6, 0), pady=(6, 6))
+        self.command_toggle_button.grid(row=12, column=2, sticky="ew", padx=(6, 0), pady=(6, 6))
 
         self.command_tray = ttk.Frame(outer)
         self.command_output = scrolledtext.ScrolledText(self.command_tray, width=95, height=10, state="disabled")
@@ -276,6 +281,21 @@ class AvidGUI:
         if hours:
             return f"{hours:d}:{minutes:02d}:{seconds:02d}"
         return f"{minutes:02d}:{seconds:02d}"
+
+    def _set_audio_duration(self, audio_path: Path, duration: float | None) -> None:
+        if Path(self.audio_var.get().strip()) != audio_path:
+            return
+
+        self.audio_duration_seconds = duration
+        if duration is None:
+            self.audio_duration_var.set("Duration unavailable")
+            return
+
+        self.audio_duration_var.set(self._format_seconds(duration))
+
+    def _load_audio_duration(self, audio_path: Path) -> None:
+        duration = get_media_duration(audio_path)
+        self.root.after(0, lambda: self._set_audio_duration(audio_path, duration))
 
     def toggle_command_tray(self) -> None:
         self.command_tray_open = not self.command_tray_open
@@ -371,6 +391,10 @@ class AvidGUI:
         )
         if path:
             self.audio_var.set(path)
+            self.audio_duration_seconds = None
+            self.audio_duration_var.set("Reading duration...")
+            thread = threading.Thread(target=self._load_audio_duration, args=(Path(path),), daemon=True)
+            thread.start()
 
     def pick_output(self) -> None:
         path = filedialog.asksaveasfilename(

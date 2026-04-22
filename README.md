@@ -25,6 +25,7 @@ Why GPLv3 for this project:
 ## What it does
 
 - Loads one image.
+- Displays the selected audio file duration as confirmation before rendering.
 - Creates a background layer by scaling the image to fill the full frame and applying a Gaussian blur radius of 40.
 - Creates a foreground layer by scaling the image to fit inside a square based on the frame's smallest dimension.
 - Centers the foreground on top of the blurred background.
